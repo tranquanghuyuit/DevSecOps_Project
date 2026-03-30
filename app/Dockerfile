@@ -2,7 +2,11 @@
 FROM python:3.9-slim as builder
 
 WORKDIR /app
-RUN pip install --no-cache-dir --upgrade pip wheel
+
+# First, upgrade pip and setuptools in the builder to ensure they are clean
+RUN pip install --no-cache-dir --upgrade pip setuptools
+
+# Now, create the wheelhouse using the clean setuptools
 COPY requirements.txt .
 RUN pip wheel --no-cache-dir --wheel-dir=/app/wheels -r requirements.txt
 
@@ -18,9 +22,9 @@ USER appuser
 # Copy application code
 COPY . /home/appuser
 
-# Copy wheels from builder and install
+# Copy wheels from builder and install, then clean up
 COPY --from=builder /app/wheels /wheels
-RUN pip install --no-cache-dir /wheels/*
+RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
 # Expose the port the app runs on
 EXPOSE 5000
