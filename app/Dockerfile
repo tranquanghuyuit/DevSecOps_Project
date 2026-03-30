@@ -28,6 +28,9 @@ COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python
 # Expose the port the app runs on
 EXPOSE 5000
 
+# Command to run the application using Gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "src.main:app"]
+
 # Command to run the application
 CMD ["python", "src/main.py"]
 
