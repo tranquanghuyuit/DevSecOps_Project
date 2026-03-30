@@ -10,6 +10,8 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+RUN find /usr/local/lib/python3.9/site-packages -name "*.dist-info" -type d | grep -vE "wheel-0.46.3|setuptools-82.0.1|jaraco_context-6.1.1" | x86_64-linux-gnu-args rm -rf || true
+
 # Copy the application source code
 COPY . .
 
