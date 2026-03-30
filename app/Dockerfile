@@ -11,9 +11,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Clean up old and vulnerable packages
-RUN find /usr/local/lib/python3.9/site-packages -type d -name "wheel-*.dist-info" ! -name "wheel-0.46.3.dist-info" -exec rm -rf {} +
-RUN find /usr/local/lib/python3.9/site-packages -type d -name "jaraco.context-*.dist-info" ! -name "jaraco.context-6.1.1.dist-info" -exec rm -rf {} +
-
+RUN find /usr/local/lib/python3.9/site-packages -name "*0.45.1*" -exec rm -rf {} + && \
+    find /usr/local/lib/python3.9/site-packages -name "*5.3.0*" -exec rm -rf {} +
 # Copy the application source code
 COPY . .
 
