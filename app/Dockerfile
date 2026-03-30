@@ -24,17 +24,20 @@ WORKDIR /home/appuser
 USER appuser
 
 # Copy installed packages and source code from the builder stage
+
+# Copy installed packages and source code from the builder stage
 COPY --from=builder /app /home/appuser
 COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+
+# Remove vulnerable versions and force-reinstall safe versions of jaraco.context and wheel
+RUN pip uninstall -y jaraco.context wheel || true \
+	&& pip install --upgrade --force-reinstall --no-cache-dir jaraco.context==6.1.1 wheel==0.46.3
 
 # Expose the port the app runs on
 EXPOSE 5000
 
 # Command to run the application using Gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "src.main:app"]
-
-# Command to run the application
-CMD ["python", "src/main.py"]
 
 
 
