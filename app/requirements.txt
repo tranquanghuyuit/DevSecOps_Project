@@ -1,3 +1,6 @@
 Flask
 pytest
 gunicorn
+# Pinning dependencies to fix vulnerabilities found by Trivy
+jaraco.context>=6.1.0
+wheel>=0.46.2

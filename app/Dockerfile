@@ -1,6 +1,7 @@
 # Stage 1: Build stage
 # Use a specific, lightweight base image
 FROM python:3.9-slim as builder
+RUN apt-get update && apt-get upgrade -y
 
 # Set the working directory
 WORKDIR /app
