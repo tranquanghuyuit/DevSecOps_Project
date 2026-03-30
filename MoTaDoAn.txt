@@ -1,0 +1,113 @@
+# Kế hoạch triển khai chi tiết Đồ án kết hợp: DevSecOps và Bảo mật Microservices (CWPP)
+
+Đây là kế hoạch triển khai tích hợp hai đề tài: "Xây dựng quy trình DevSecOps" và "Bảo mật trong môi trường Microservices – Cloud Workload Protection".
+
+## Cấu trúc thư mục tổng quan
+
+```
+/DoAn
+|
+├── .github/workflows/         # Chứa pipeline CI/CD của GitHub Actions
+|   ├── ci-pipeline.yml        # Pipeline chính: Build, Test, Scan
+|   └── cd-pipeline.yml        # Pipeline phụ: Deploy (sử dụng ArgoCD)
+|
+├── app/                       # Chứa mã nguồn ứng dụng (ví dụ: Python/NodeJS)
+|   ├── src/                   # Mã nguồn chính
+|   |   └── main.py            # File code ứng dụng
+|   ├── tests/                 # Chứa Unit Test
+|   |   └── test_main.py       # File test
+|   ├── Dockerfile             # Định nghĩa cách build Docker image cho ứng dụng
+|   └── requirements.txt       # (Đối với Python) Danh sách các thư viện cần cài
+|
+├── infra/                     # Chứa code Infrastructure as Code (IaC)
+|   ├── terraform/             # Dùng Terraform để dựng hạ tầng K8S
+|   |   ├── main.tf            # Cấu hình chính để tạo cụm K8S
+|   |   └── variables.tf       # Các biến cho Terraform
+|   └── security-tools/        # Chứa manifest để cài đặt các công cụ bảo mật
+|       ├── neuvector.yml      # File manifest/helm values cho NeuVector
+|       └── kubescape.yml      # File manifest/helm values cho Kubescape
+|
+├── kubernetes/                # Chứa các file manifest YAML cho ứng dụng
+|   ├── base/                  # Cấu hình K8S cơ bản cho ứng dụng
+|   |   ├── deployment.yml
+|   |   ├── service.yml
+|   |   └── namespace.yml
+|   └── overlays/              # Cấu hình cho các môi trường khác nhau
+|       └── production/
+|           └── kustomization.yml
+|
+├── scripts/                   # Chứa các script phụ trợ
+|   └── run_scans.sh           # Script để chạy các công cụ quét bảo mật thủ công
+|
+├── .gitignore                 # Các file/folder cần Git bỏ qua
+├── MoTaDoAn.txt               # File mô tả này
+└── README.md                  # Hướng dẫn tổng quan về đồ án
+```
+
+## Mô tả chi tiết các bước và file tương ứng
+
+### Giai đoạn 1 & 2: Nền tảng DevSecOps - "Shift Left" (Giữ nguyên)
+
+Chúng ta giữ nguyên hai giai đoạn đầu tiên như kế hoạch cũ. Mục tiêu là xây dựng một pipeline CI vững chắc, có khả năng tự động build, test và quan trọng nhất là **quét bảo mật** mã nguồn, thư viện, và image trước khi triển khai. Các công cụ như `Trivy`, `Semgrep`, `Gitleaks` sẽ được tích hợp vào file `.github/workflows/ci-pipeline.yml`.
+
+### Giai đoạn 3: Triển khai và Bảo mật Runtime (CD & CWPP) - "Shield Right"
+
+Đây là phần tích hợp chiều sâu của đề tài An toàn mạng nâng cao.
+
+1.  **Dựng hạ tầng K8S (IaC):**
+    *   **`infra/terraform/main.tf`**: Sử dụng Terraform để tự động dựng một cụm Kubernetes. Đây là bước đáp ứng yêu cầu "deploy môi trường K8S".
+
+2.  **Triển khai ứng dụng (GitOps):**
+    *   **Công cụ**: `ArgoCD`.
+    *   **`kubernetes/`**: Chứa các manifest để ArgoCD theo dõi và tự động triển khai ứng dụng lên K8S.
+
+3.  **Tích hợp các công cụ Cloud Workload Protection Platform (CWPP):**
+    *   **Mục tiêu**: Đáp ứng yêu cầu "tích hợp các tính năng Bảo mật" trong môi trường Microservices.
+    *   **Kubescape (Bảo mật cấu hình):**
+        *   **Cài đặt**: Dùng Helm hoặc manifest trong `infra/security-tools/`.
+        *   **Vai trò**: Quét toàn bộ cluster và các file YAML để tìm các lỗi cấu hình sai (misconfigurations) và đánh giá tính tuân thủ (compliance) theo các tiêu chuẩn bảo mật quốc tế (NSA, MITRE). Nó trả lời câu hỏi: "Cluster của tôi có được dựng lên một cách an toàn không?"
+    *   **NeuVector (Bảo mật runtime):**
+        *   **Cài đặt**: Dùng Helm hoặc manifest trong `infra/security-tools/`.
+        *   **Vai trò**: Cung cấp một lớp bảo vệ sâu khi ứng dụng đang chạy.
+            *   **Quét lỗ hổng runtime & Admission Control**: Liên tục quét image đang chạy và có thể chặn các pod không an toàn được deploy.
+            *   **Tường lửa Layer 7 cho Container**: Tự động học các hành vi mạng bình thường và xây dựng một chính sách zero-trust. Nó sẽ chặn mọi kết nối mạng bất thường giữa các microservices.
+            *   **Phát hiện và phản ứng mối đe dọa**: Giám sát các tiến trình, file system bên trong container. Nếu phát hiện hành vi đáng ngờ (ví dụ: thực thi mã độc, thay đổi file hệ thống), nó sẽ cảnh báo hoặc chặn ngay lập tức.
+
+### Giai đoạn 4: Giám sát và Phản hồi
+
+1.  **Monitoring Stack:**
+    *   Cài đặt `Prometheus` & `Grafana` để theo dõi sức khỏe hệ thống.
+
+2.  **Alerting (Phản hồi):**
+    *   Cấu hình `Alertmanager` để gửi cảnh báo.
+    *   **Tích hợp**: Nguồn cảnh báo bây giờ sẽ đến từ 2 nơi:
+        *   `Prometheus`: Cảnh báo về hiệu năng (CPU, RAM cao).
+        *   `NeuVector`: Cảnh báo về các hoạt động **bảo mật** đáng ngờ (kết nối mạng trái phép, tiến trình lạ...). Đây là một phần rất quan trọng của việc phản hồi.
+
+---
+
+## Kịch bản Demo kết hợp ấn tượng
+
+**Bước 1: Viết code lỗi và Push (Shift Left in Action)**
+*   Bạn cố tình push một đoạn code chứa mật khẩu (`gitleaks` sẽ phát hiện) hoặc dùng một thư viện có lỗ hổng nghiêm trọng (`trivy` sẽ phát hiện).
+*   **Kết quả:** Pipeline CI trên GitHub Actions **thất bại**. Bạn chỉ ra cho hội đồng thấy hệ thống đã tự động chặn mối nguy từ sớm.
+
+**Bước 2: Sửa lỗi và Deploy thành công**
+*   Bạn sửa code, push lại.
+*   **Kết quả:** Pipeline CI chạy thành công, build và push image lên registry. ArgoCD tự động nhận diện phiên bản mới và deploy ứng dụng lên K8S.
+
+**Bước 3: Kiểm tra Tuân thủ Cấu hình (Kubescape)**
+*   Sau khi deploy, bạn chạy `kubescape scan` hoặc truy cập vào dashboard của nó.
+*   **Kết quả:** Bạn trình bày báo cáo của Kubescape, chứng minh rằng cluster và workload của bạn đang tuân thủ các tiêu chuẩn bảo mật, không có cấu hình sai nguy hiểm nào.
+
+**Bước 4: Trình diễn Bảo mật Runtime (NeuVector - Shield Right in Action)**
+*   Bạn mở giao diện của NeuVector.
+*   **Trình diễn 1 (Tường lửa):**
+    *   Chỉ ra sơ đồ mạng mà NeuVector đã tự học.
+    *   `exec` vào một container và dùng `curl` để cố gắng kết nối tới một service không được phép.
+    *   **Kết quả:** NeuVector ngay lập tức **chặn** kết nối và tạo ra một cảnh báo bảo mật.
+*   **Trình diễn 2 (Phát hiện tiến trình lạ):**
+    *   `exec` vào container và chạy một lệnh không có trong hành vi bình thường (ví dụ: `nmap` hoặc `touch /etc/malware`).
+    *   **Kết quả:** NeuVector phát hiện hành vi đáng ngờ và tạo cảnh báo.
+
+Với kịch bản này, bạn đã trình diễn một câu chuyện DevSecOps hoàn chỉnh từ trái sang phải, kết hợp nhuần nhuyễn yêu cầu của cả hai đề tài.
