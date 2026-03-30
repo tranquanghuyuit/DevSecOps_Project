@@ -1,23 +1,12 @@
-# Stage 1: Build stage
-# Use a specific, lightweight base image
+# Stage 1: Build stage - Create a wheelhouse
 FROM python:3.9-slim as builder
 
-
-# Set the working directory
 WORKDIR /app
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
-# Copy the requirements file and install dependencies
+RUN pip install --no-cache-dir --upgrade pip wheel
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Clean up old and vulnerable packages
-RUN find /usr/local/lib/python3.9/site-packages -name "*0.45.1*" -exec rm -rf {} + && \
-    find /usr/local/lib/python3.9/site-packages -name "*5.3.0*" -exec rm -rf {} +
-# Copy the application source code
-COPY . .
+RUN pip wheel --no-cache-dir --wheel-dir=/app/wheels -r requirements.txt
 
 # Stage 2: Final stage
-# Use a minimal, non-root base image for security
 FROM python:3.9-slim
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
@@ -26,15 +15,15 @@ RUN useradd --create-home appuser
 WORKDIR /home/appuser
 USER appuser
 
-# Copy installed packages and source code from the builder stage
-COPY --from=builder /app /home/appuser
-COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+# Copy application code
+COPY . /home/appuser
+
+# Copy wheels from builder and install
+COPY --from=builder /app/wheels /wheels
+RUN pip install --no-cache-dir /wheels/*
 
 # Expose the port the app runs on
 EXPOSE 5000
-
-# Command to run the application using Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "src.main:app"]
 
 # Command to run the application using Gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "src.main:app"]
