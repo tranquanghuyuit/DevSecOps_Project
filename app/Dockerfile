@@ -28,7 +28,8 @@ WORKDIR /home/appuser
 USER appuser
 
 # Copy installed packages and source code from the builder stage
-COPY --from=builder /home/appuser /home/appuser
+COPY --from=builder /app /home/appuser
+COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
 
 # Expose the port the app runs on
 EXPOSE 5000
