@@ -30,6 +30,35 @@ jobs:
         run: |
           docker run --rm devsecops-app:latest python -m pytest
 
+      - name: Scan for secrets with Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          fail: true # Fail the pipeline if secrets are found
+
+      - name: Scan application dependencies for vulnerabilities (SCA) with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: './app'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
+
+      - name: Scan source code for security issues (SAST) with Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: "p/python" # Use the default Python ruleset
+
+      - name: Scan container image for vulnerabilities with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'devsecops-app:latest'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
+
   push-to-registry:
     needs: build-and-test
     runs-on: ubuntu-latest
@@ -40,19 +69,6 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-
-      - name: Debug Secrets
-        run: |
-          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
-            echo "### DOCKERHUB_USERNAME secret is NOT set! ###"
-          else
-            echo "### DOCKERHUB_USERNAME secret is set. ###"
-          fi
-          if [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
-            echo "### DOCKERHUB_TOKEN secret is NOT set! ###"
-          else
-            echo "### DOCKERHUB_TOKEN secret is set. ###"
-          fi
         
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
