@@ -1,11 +1,11 @@
 # Stage 1: Build stage
 # Use a specific, lightweight base image
 FROM python:3.9-slim as builder
-RUN apt-get update && apt-get upgrade -y
+
 
 # Set the working directory
 WORKDIR /app
-
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # Copy the requirements file and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -16,6 +16,7 @@ COPY . .
 # Stage 2: Final stage
 # Use a minimal, non-root base image for security
 FROM python:3.9-slim
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user
 RUN useradd --create-home appuser
